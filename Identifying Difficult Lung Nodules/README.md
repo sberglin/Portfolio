@@ -1,0 +1,3 @@
+# Identifying Difficult Lung Nodules
+
+This project was a part of my work at the Medical Informatics Research Experience for Undergraduates between the University of Chicago and DePaul University. It focused on applying our efficient, weakly supervised classifier (from my SPIE paper) to differentiate between lung nodules that are 'easy' to classify by a radiologist from those that are 'hard' to classify.
