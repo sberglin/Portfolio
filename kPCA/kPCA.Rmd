@@ -1,0 +1,250 @@
+---
+title: "kPCA"
+author: "Sam Berglin"
+date: "4/4/2019"
+output: html_document
+---
+
+```{r}
+library(kernlab)
+library(latex2exp)
+library(knitr)
+library(scales)
+set.seed(2019)
+```
+
+# Two Half Crescents
+
+Show that we can make non-linearly separable classes linearly separable.
+
+## Generating Data
+
+Generation code largely based off of `make_moons` from `scikit-learn`
+
+```{r}
+make_moons = function(n = 1000, noise = 0.01) {
+    
+    n_out = n %/% 2
+    n_in = n - n_out
+    
+    outer_circ_x = cos(seq(0, pi, length.out = n_out)) + 
+        rnorm(n = n_out, sd = noise)
+    outer_circ_y = sin(seq(0, pi, length.out = n_out)) + 
+        rnorm(n = n_out, sd = noise)
+    inner_circ_x = 1 - cos(seq(0, pi, length.out = n_in)) + 
+        rnorm(n = n_in, sd = noise)
+    inner_circ_y = 1 - sin(seq(0, pi, length.out = n_in)) - .5 + 
+        rnorm(n = n_in, sd = noise)
+    
+    X = t(rbind(c(outer_circ_x, inner_circ_x), c(outer_circ_y, inner_circ_y)))
+    Y = c(rep(1, n_out), rep(2, n_in))
+    
+    return(list(X = X, Y = Y))
+}
+
+moons = make_moons()
+plot(moons$X, col = moons$Y, xlab = "", ylab = "",
+     main = "Moons Data Distribution")
+```
+
+## Linear PCA
+
+```{r}
+PCA = prcomp(moons$X, retx = TRUE)
+summary(PCA)
+plot(PCA$x, col = moons$Y,
+     main = "First Two Principal Components after Linear PCA")
+plot(cbind(PCA$x[,1], jitter(rep(0, nrow(PCA$x)))), xlab = "PC1", col = moons$Y,
+     ylab = "",
+     main = "First Principal Component after Linear PCA", ylim = c(-0.2, 0.2))
+```
+
+Fails to separate the classes.
+
+## Kernel PCA
+
+$K(x, x') = \exp \Big( \frac{-||x - x'||^2}{2 \sigma^2} \Big)$.
+
+```{r}
+var.prop.plot.kpca = function(kpca) {
+    x = eig(kpca) / sum(eig(kpca))
+    plot(1:length(x), x, xlab = "Principal Component", type = "l",
+         ylab = "Proportion of Variance", 
+         main = "Proportion of Variance by Principal Component")
+}
+
+summary.kpca = function(kpca) {
+    eigs = kpca@eig
+    cum.prop.var = cumsum(eigs) / sum(eigs)
+    prop.var = eigs / sum(eigs)
+    summary = data.frame(matrix(c(prop.var, cum.prop.var),
+                                ncol = length(prop.var), byrow = TRUE))
+    colnames(summary) = names(eigs)
+    rownames(summary) = c("Proportion of Variance", "Cumulative Proportion")
+    return(summary)
+}
+```
+
+```{r moons_kpca}
+kPCA = kpca(moons$X, kpar = list(sigma = 15))
+plot(kPCA@rotated[,1:2], col = moons$Y, xlab = "PC1", ylab = "PC2",
+     main = "First Two Principal Components after Kernel PCA")
+kable(summary.kpca(kPCA))
+plot(cbind(kPCA@rotated[,1], jitter(rep(0, nrow(PCA$x)))),
+     xlab = "PC1", col = moons$Y, ylab = "",
+     main = "First Principal Component after Kernel PCA", ylim = c(-0.2, 0.2))
+var.prop.plot.kpca(kPCA)
+```
+
+# Two Concentric Circles
+
+Note that we used a hyperparameter $\sigma = 15$ for our kernel. This was determined through tinkering with the data. Automatic selection of kernel hyperparameters is an active research area (https://thescipub.com/pdf/10.3844/jcssp.2014.1139.1150). We show how meaningful this is on a new dataset `circles`.
+
+
+## Generating Data
+
+Also based from `make_circles` from Python's `sklearn` module.
+
+```{r}
+make_circles = function(n = 1000, factor = 0.2, noise = 0.01) {
+    
+    if (factor >= 1 | factor < 0) {
+        warning("Factor has to be between 0 and 1.")
+    }
+        
+    n_out = n %/% 2
+    n_in = n - n_out
+    noise = 0.01
+    
+    linspace_out = seq(0, 2*pi, length.out = n_out)
+    linspace_in = seq(0, 2*pi, length.out = n_in)
+    outer_circ_x = cos(linspace_out) + rnorm(n = n_out, sd = noise)
+    outer_circ_y = sin(linspace_out) + rnorm(n = n_out, sd = noise)
+    inner_circ_x = cos(linspace_in) * factor + rnorm(n = n_in, sd = noise)
+    inner_circ_y = sin(linspace_in) * factor + rnorm(n = n_in, sd = noise)
+    
+    X = t(rbind(c(outer_circ_x, inner_circ_x), c(outer_circ_y, inner_circ_y)))
+    Y = c(rep(1, n_out), rep(2, n_in)) 
+    return(list(X = X, Y = Y))
+}
+
+circles = make_circles()
+plot(circles$X, col = circles$Y, xlab = "", ylab = "",
+     main = "Circle Data Distribution")
+```
+
+### The Radial Basis Function Kernel
+
+The kernel used thus far is the radial basis function (RBF) kernel. It represents a notion of similarity between points. The RBF kernel for two $x$ and $x'$ is as follows.
+
+$K(x, x') = \exp \Big( \frac{-||x - x'||^2}{2\sigma^2} \Big)$ where $\sigma$ is a free parameter.
+
+We show the importance of this parameter below.
+
+## Testing Values of $\sigma$
+
+```{r hyperparameters}
+# Sigma = 0.1
+kPCA = kpca(circles$X, kpar = list(sigma = .1))
+plot(kPCA@rotated[,1:2], col = circles$Y, xlab = "PC1", ylab = "PC2",
+     main = TeX("Kernel PCA with $\\sigma = 0.1$"))
+
+# Sigma = 1
+kPCA = kpca(circles$X, kpar = list(sigma = 1))
+plot(kPCA@rotated[,1:2], col = circles$Y, xlab = "PC1", ylab = "PC2",
+     main = TeX("Kernel PCA with $\\sigma = 1$"))
+
+# Sigma = 20
+kPCA = kpca(circles$X, kpar = list(sigma = 20))
+plot(kPCA@rotated[,1:2], col = circles$Y, xlab = "PC1", ylab = "PC2",
+     main = TeX("Kernel PCA with $\\sigma = 20$"))
+```
+
+Notice how the kernel has little effect when $\sigma = 0.1$, separates well when $\sigma = 1$, and "reverses" the circles when $\sigma = 20$ (all the black dots are stacked together in center). Due to these differences, kernel parameters are often chosen by cross validation.
+
+## Different Kernels
+
+* Good source: http://crsouza.com/2010/03/17/kernel-functions-for-machine-learning-applications/#laplacian
+
+Different kernel functions besides RBF kernel can also be used. We demonstrate a few below on the `circle` data. Higher values indicate more similar points.
+
+### Linear Kernel
+
+$K(x, x') = x^Tx'$ where $x, x' \in \mathbb{R}^d$.
+
+```{r linear_kernel}
+kPCA = kpca(circles$X, kernel = "vanilladot", kpar = list())
+plot(kPCA@rotated[,1:2], col = circles$Y, xlab = "PC1", ylab = "PC2",
+     main = TeX("Kernel PCA with Linear Kernel"))
+
+# Exact same as Linear PCA
+PCA = prcomp(circles$X, retx = TRUE)
+plot(PCA$x, col = circles$Y, main = "Linear PCA", xlab = "", ylab = "")
+```
+
+### Laplacian Kernel
+
+This kernel is more similar to the RBF kernel. It has a similar $\sigma$ parameter as the RBF kernel.
+
+$K(x, x') = \exp \Big( \frac{-||x-x'||}{\sigma} \Big)$
+
+```{r laplacian_kernel}
+kPCA = kpca(circles$X, kernel = "laplacedot", kpar = list(sigma = 1))
+plot(kPCA@rotated[,1:2], col = circles$Y, xlab = "PC1", ylab = "PC2",
+     main = TeX("Kernel PCA with Laplacian Kernel"))
+
+```
+
+### Spline Kernel
+
+$K(x, x') = \prod_{i=1}^{d} 1+x_{i} x'_{i}+x_{i} x'_{i} \min \left(x_{i}, x'_{i}\right)-\frac{x_{i}+x'_{i}}{2} \min \left(x_{i}, x'_{i}\right)^{2}+\frac{\min \left(x_{i}, x'_{i}\right)^{3}}{3}$ where $x_i$ is the $i^{th}$ entry of $x$.
+
+```{r spline_kernel}
+kPCA = kpca(circles$X, kernel="splinedot", kpar=list())
+plot(kPCA@rotated[,1:2], col = circles$Y, xlab = "PC1", ylab = "PC2",
+     main = TeX("Kernel PCA with Spline Kernel"))
+```
+
+# Discovering Manifolds on Higher Dimensional Data
+
+```{r high-dimensional}
+# Simulating data from circles data
+hd = data.frame(moons)
+n = nrow(hd)
+hd$X.3 = 3*hd$X.2 + sign(hd$X.1) + rnorm(n, sd = 1)
+hd$X.4 = -exp(hd$X.1) * hd$X.2^2 + rnorm(n, sd = 1)
+hd$X.5 = sin(hd$X.1) + cos(hd$X.2) + rnorm(n, sd = 1) 
+
+# Setup for PCA
+hd$Y = NULL
+
+# Regular pca
+PCA = princomp(as.matrix(hd), cor = TRUE)
+summary(PCA)
+plot(PCA$scores, col = circles$Y, xlab = "PC1", ylab = "PC2",
+     main = "Linear PCA", pch = ".", cex = 4)
+
+# kpca with gaussian kernel
+kPCA = kpca(as.matrix(hd), kpar = list(sigma = 3))
+kable(summary.kpca(kPCA))
+plot(kPCA@rotated[,1:2], xlab = "PC1", ylab = "PC2",
+     main = "Kernel PCA with Gaussian Kernel", pch = ".", cex = 4,
+     col = alpha(circles$Y, 0.5))
+var.prop.plot.kpca(kPCA)
+
+# kpca with laplacian kernel
+kPCA = kpca(as.matrix(hd), kpar = list(sigma = 3), kernel = "laplacedot")
+kable(summary.kpca(kPCA))
+plot(kPCA@rotated[,1:2], xlab = "PC1", ylab = "PC2",
+     main = "Kernel PCA with Laplacian Kernel", pch = ".", cex = 4,
+     col = alpha(circles$Y, 0.5))
+var.prop.plot.kpca(kPCA)
+
+# kpca with spline kernel
+kPCA = kpca(as.matrix(hd), kpar = list(), kernel = "splinedot")
+kable(summary.kpca(kPCA))
+plot(kPCA@rotated[,1:2], xlab = "PC1", ylab = "PC2",
+     main = "Kernel PCA with Spline Kernel", pch = ".", cex = 4,
+     col = alpha(circles$Y, 0.5))
+var.prop.plot.kpca(kPCA)
+```
