@@ -1,1 +1,1 @@
-My code during my work at [Bonjoro](https://www.bonjoro.com) understandably belongs to Bonjoro, not me. However, I can share their [awesome blog post](https://www.bonjoro.com/blog/post/bonjoro-master-the-stats-part-1) that summarized my findings.
+My code during my work at [Bonjoro](https://www.bonjoro.com) understandably belongs to Bonjoro, not me. However, I can share their [awesome blog post](https://www.bonjoro.com/blog/post/bonjoro-master-the-stats-part-1) that summarized my findings. 
