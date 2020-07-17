@@ -1,6 +1,6 @@
-# Projects and Papers
+# Papers and Projects
 
-This is a collection of my recent machine learning projects and papers. If you are curious about any code, feel free to reach out!
+This is a collection of my recent machine learning papers and projects. If you are curious about any code, feel free to reach out!
 
 ## Publications
 
