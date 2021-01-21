@@ -6,7 +6,7 @@ This is a collection of my recent machine learning papers and projects. If you a
 
 - Samuel Berglin, Eura Shin, Jacob Furst, and Daniela Raicu. Efficient learning in computer-aided diagnosis through label propagation. SPIE Medical Imaging 2019: Computer-Aided Diagnosis.
 - Eura Shin, Samuel Berglin, Jacob Furst, and Daniela Raicu. Expanding annotated data with informed labels for weak supervision. 2019 International Conference on Machine Learning and Data Mining.
-- (Under Review) Eura Shin, Samuel Berglin, Daniela Raicu. Identifying difficult cases through selective iterative classification and label propagation. Journal of Digital Imaging (2019).
+- (Unpublished) Eura Shin, Samuel Berglin, Daniela Raicu. Identifying difficult cases through selective iterative classification and label propagation.
 
 ## Projects
 
